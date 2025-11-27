@@ -1,0 +1,36 @@
+name: Deploy to DigitalOcean Droplet
+
+on:
+  push:
+    branches: [ "main" ]   # deploys whenever you push to main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Copy project to droplet via SSH
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          source: "./"
+          target: "/root/finalback-temp"
+
+      - name: Run deploy script on droplet
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            rm -rf /root/finalback-old
+            mv /root/finalback /root/finalback-old || true
+            mv /root/finalback-temp /root/finalback
+            cd /root/finalback
+            yarn install
+            pm2 restart finalback
