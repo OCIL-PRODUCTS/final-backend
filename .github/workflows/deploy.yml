@@ -17,6 +17,10 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Debug secrets
+        run: |
+    echo "IP is: ${{ secrets.DO_SERVER_IP }}"
+
 
       - name: Copy files to server
         run: |
