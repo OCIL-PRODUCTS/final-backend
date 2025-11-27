@@ -1,0 +1,33 @@
+name: Deploy Backend to Droplet
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Copy files to server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USERNAME }}@${{ secrets.DO_SERVER_IP }} "mkdir -p ${{ secrets.DEPLOY_DIRECTORY }}"
+          rsync -avz --exclude '.git' ./ ${{ secrets.SSH_USERNAME }}@${{ secrets.DO_SERVER_IP }}:${{ secrets.DEPLOY_DIRECTORY }}/
+
+      - name: Install dependencies + Restart PM2
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USERNAME }}@${{ secrets.DO_SERVER_IP }} << 'EOF'
+            cd ${{ secrets.DEPLOY_DIRECTORY }}
+            yarn install --production
+            pm2 restart finalback || pm2 start yarn --name finalback -- run start
+            pm2 save
+          EOF
