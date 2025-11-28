@@ -1,37 +1,36 @@
-name: Deploy Backend to Droplet
+name: Deploy to DigitalOcean Droplet
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]   # deploys whenever you push to main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: Copy project to droplet via SSH
+        uses: appleboy/scp-action@v0.1.7
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-      - name: Debug secrets
-        run: |
-         echo "IP is: ${{ secrets.DO_SERVER_IP }}"
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          source: "./"
+          target: "/root/finalback-temp"
 
-
-      - name: Copy files to server
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USERNAME }}@${{ secrets.DO_SERVER_IP }} "mkdir -p ${{ secrets.DEPLOY_DIRECTORY }}"
-          rsync -avz --exclude '.git' ./ ${{ secrets.SSH_USERNAME }}@${{ secrets.DO_SERVER_IP }}:${{ secrets.DEPLOY_DIRECTORY }}/
-
-      - name: Install dependencies + Restart PM2
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USERNAME }}@${{ secrets.DO_SERVER_IP }} << 'EOF'
-            cd ${{ secrets.DEPLOY_DIRECTORY }}
-            yarn install --production
-            pm2 restart finalback || pm2 start yarn --name finalback -- run start
-            pm2 save
-          EOF
+      - name: Run deploy script on droplet
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            rm -rf /root/finalback-old
+            mv /root/finalback /root/finalback-old || true
+            mv /root/finalback-temp /root/finalback
+            cd /root/finalback
+            yarn install
+            pm2 restart finalback
