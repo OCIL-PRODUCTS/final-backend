@@ -23,14 +23,14 @@ jobs:
       - name: Add server to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
       - name: Upload code to server (overwrite target)
         run: |
-          rsync -avz --delete --exclude '.git' --exclude 'node_modules' ./ ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.REMOTE_APP_PATH }}/
+          rsync -avz --delete --exclude '.git' --exclude 'node_modules' ./ \
+          ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.REMOTE_APP_PATH }}/
         env:
           SSH_AUTH_SOCK: ${{ env.SSH_AUTH_SOCK }}
-
 
       - name: Install deps & restart app on server
         uses: appleboy/ssh-action@v1.0.3
@@ -51,7 +51,6 @@ jobs:
 
             echo "-> install dependencies (production)"
             if [ -f package-lock.json ] || [ -f yarn.lock ] || [ -f package.json ]; then
-              # prefer npm if package.json exists
               if command -v yarn >/dev/null 2>&1 && [ -f yarn.lock ]; then
                 yarn install --production
               else
@@ -62,12 +61,10 @@ jobs:
               exit 1
             fi
 
-            echo "-> restart with pm2 (use package start script)"
-            # remove any existing pm2 process named finalback
+            echo "-> restart with pm2"
             pm2 stop finalback || true
             pm2 delete finalback || true
 
-            # start using package.json "start" script, fallback to index.js
             if [ -f package.json ]; then
               pm2 start npm --name finalback -- run start
             elif [ -f index.js ]; then
