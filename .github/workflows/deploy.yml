@@ -40,7 +40,11 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT }}
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
-            set -e
+           set -e
+           export PATH=$PATH:/usr/bin:/usr/local/bin
+           export NVM_DIR="/root/.nvm"
+           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+           
             cd /root/final-backend
 
             echo "-> install dependencies"
