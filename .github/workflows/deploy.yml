@@ -50,29 +50,18 @@ jobs:
             ls -la
 
             echo "-> install dependencies (production)"
-            if [ -f package-lock.json ] || [ -f yarn.lock ] || [ -f package.json ]; then
-              if command -v yarn >/dev/null 2>&1 && [ -f yarn.lock ]; then
-                yarn install --production
-              else
-                npm install --production
-              fi
+            if [ -f package.json ]; then
+              npm install --production
             else
               echo "No package.json found in ${{ secrets.REMOTE_APP_PATH }}!"
               exit 1
             fi
 
-            echo "-> restart with pm2"
-            pm2 stop finalback || true
-            pm2 delete finalback || true
+            echo "-> restart backend using PM2 (new process name: backend)"
+            pm2 stop backend || true
+            pm2 delete backend || true
 
-            if [ -f package.json ]; then
-              pm2 start npm --name finalback -- run start
-            elif [ -f index.js ]; then
-              pm2 start index.js --name finalback
-            else
-              echo "No start entry found to start the app"
-              exit 1
-            fi
+            pm2 start npm --name backend -- run start
 
             pm2 save
             pm2 list
