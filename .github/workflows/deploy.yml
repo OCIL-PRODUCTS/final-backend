@@ -41,7 +41,7 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
             set -e
-            cd "${{ secrets.REMOTE_APP_PATH }}"
+            cd /root/final-backend
 
             echo "-> install dependencies"
             npm install
