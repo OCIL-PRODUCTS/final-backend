@@ -25,14 +25,14 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Upload code to server (overwrite target)
+      - name: Upload code to server
         run: |
           rsync -avz --delete --exclude '.git' --exclude 'node_modules' ./ \
           ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.REMOTE_APP_PATH }}/
         env:
           SSH_AUTH_SOCK: ${{ env.SSH_AUTH_SOCK }}
 
-      - name: Install deps & restart app on server
+      - name: Install deps & restart backend
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -42,25 +42,22 @@ jobs:
           script: |
             set -e
 
-            echo "-> ensure directory exists"
-            mkdir -p "${{ secrets.REMOTE_APP_PATH }}"
             cd "${{ secrets.REMOTE_APP_PATH }}"
 
-            echo "-> show current folder contents"
-            ls -la
+            echo "-> load NVM"
+            export NVM_DIR="$HOME/.nvm"
+            source "$NVM_DIR/nvm.sh"
 
-            echo "-> install dependencies (production)"
-            if [ -f package.json ]; then
-              npm install --production
-            else
-              echo "No package.json found in ${{ secrets.REMOTE_APP_PATH }}!"
-              exit 1
-            fi
+            echo "-> verify node & npm"
+            node -v
+            npm -v
 
-            echo "-> restart backend using PM2 (new process name: backend)"
+            echo "-> installing dependencies"
+            npm install --production
+
+            echo "-> restarting PM2 backend"
             pm2 stop backend || true
             pm2 delete backend || true
-
             pm2 start npm --name backend -- run start
 
             pm2 save
